@@ -12,6 +12,7 @@ pub struct Meal {
     pub name: String,
     pub category: String,
     pub additives: BTreeMap<String, String>,
+    pub date: String,
 
     #[serde(flatten)]
     pub prices: Prices,
