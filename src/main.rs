@@ -62,7 +62,7 @@ impl EventHandler for Handler {
                     m.add_embed(|embed| {
                         embed
                             .title(parsed_date.format_localized("%A, %-d %B in der Mensa gibt es:", chrono::Locale::de_DE))
-                            .footer(|f| f.text("❤️EdJoPaTo für mensa-crawler!\n 🕵️Quellcode: https://github.com/AnnsAnna/haw-mensa"))
+                            .footer(|f| f.text("❤️EdJoPaTo für mensa-crawler!\n 🕵️Quellcode: https://github.com/AnnsAnna/hamburg-mensa-bot"))
                             .color(0x00ff00)
                     });
                     meals.iter().for_each(|meal| {

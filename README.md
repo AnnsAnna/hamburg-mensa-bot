@@ -1,4 +1,4 @@
-# HAW Mensa Discord Bot 🤖
+# Hamburg Mensa Bot 🤖
 
 This bot is intended to be run through a daily cronjob. It will post the menu of the day to a discord channel.
 
