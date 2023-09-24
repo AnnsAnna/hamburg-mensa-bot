@@ -1,5 +1,3 @@
-use mensa_crawler::meal::{Meal, Meta};
-use mensa_crawler::{http, meal, parse, write_meals};
 use serenity::model::Timestamp;
 use std::collections::HashMap;
 use std::env;
@@ -10,36 +8,31 @@ use serenity::model::gateway::Ready;
 use serenity::prelude::*;
 extern crate dotenv;
 use chrono::{DateTime, Utc};
+use serde::Deserialize;
+use tokio::task::spawn_blocking;
+
+mod meals;
 
 use dotenv::dotenv;
 struct Handler {
-    meals: Vec<Meal>,
+    meals: Option<Vec<meals::Meal>>,
+    channel_id: u64,
 }
 
-const CANTEENS: [&str; 2] = ["Mensa Berliner Tor", "Mensa Bergedorf"];
-const URL_THIS_WEEK: &str = "https://www.stwhh.de/speiseplan/?t=next_day";
+const BASE_URL: &str =
+    "https://raw.githubusercontent.com/HAWHHCalendarBot/mensa-data/main/Mensa%20Berliner%20Tor/";
+const USER_AGENT: &str = "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)";
 
 #[async_trait]
 impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, ready: Ready) {
-        ctx.http.send_message(1140056759118082109, |m| {
-            m.content("Hello, World!")
-                .embed(|e| {
-                    e.title("This is a title")
-                        .description("This is a description")
-                        .image("attachment://ferris_eyes.png")
-                        .fields(vec![
-                            ("This is the first field", "This is a field body", true),
-                            ("This is the second field", "Both fields are inline", true),
-                        ])
-                        .field("This is the third field", "This is not an inline field", false)
-                        .footer(|f| f.text("This is a footer"))
-                        // Add a timestamp for the current time
-                        // This also accepts a rfc3339 Timestamp
-                        .timestamp(Timestamp::now())
-                })
-        }).await.unwrap();
         println!("{} is connected!", ready.user.name);
+
+        let channel = ctx.http.get_channel(self.channel_id).await.unwrap().id();
+        
+        // Clear the channel
+        let messages = channel.messages(&ctx.http, |retriever| retriever.limit(100)).await.unwrap();
+        channel.delete_messages(&ctx.http, messages).await.unwrap();
     }
 }
 
@@ -50,31 +43,34 @@ async fn main() {
 
     // Configure the client with your Discord bot token in the environment.
     let token = env::var("DISCORD_TOKEN").expect("Expected a token in the environment");
+    let channel_id = env::var("CHANNEL_ID").expect("Expected a channel id in the environment");
 
-    println!("this week...");
-    let html = http::get_text(URL_THIS_WEEK).unwrap();
-    let meals = parse::parse(&html);
-    let mut canteens: &Vec<Meal> = &Vec::new();
-    for canteen in meals.keys() {
-        if canteen.canteen == "Mensa Berliner Tor" {
-            canteens = meals.get(canteen).unwrap();
-            let now: DateTime<Utc> = Utc::now();
+    let client = reqwest::Client::builder()
+        .user_agent(USER_AGENT)
+        .build()
+        .unwrap();
 
-            if canteen.date.format("%d.%m.%Y").to_string() != now.format("%d.%m.%Y").to_string() {
-                println!("No meals for today");
-                return;
-            }
+    let now = chrono::Local::now();
+    let request = client
+        .get(format!("{}{}.json", BASE_URL, now.format("%Y/%m/%d")))
+        .send()
+        .await
+        .unwrap();
 
-            break;
-        }
-    }
-    println!("{:#?}", canteens);
+    println!("Status: {}", request.status());
+
+    let meals = if request.status() == 404 {
+        None
+    } else {
+        Some(request.json::<Vec<meals::Meal>>().await.unwrap())
+    };
 
     let intents = GatewayIntents::GUILD_MESSAGES | GatewayIntents::DIRECT_MESSAGES;
 
     let mut client = Client::builder(&token, intents)
         .event_handler(Handler {
-            meals: canteens.to_vec(),
+            meals: meals,
+            channel_id: channel_id.parse::<u64>().unwrap(),
         })
         .await
         .expect("Err creating client");
