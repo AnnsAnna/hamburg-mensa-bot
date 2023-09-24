@@ -30,7 +30,7 @@ impl EventHandler for Handler {
         println!("{} is connected!", ready.user.name);
 
         let channel = ctx.http.get_channel(self.channel_id).await.unwrap().id();
-        let bracket_regex = Regex::new(r"\(\s?[^)]*[,]{1}[^)]*\)|\([^)]{1,2}\)").unwrap();
+        let bracket_regex = Regex::new(r"\s?(\([^)]*[,]{1}[^)]*\)|\([^)]{1,2}\))").unwrap();
 
         // Clear the channel
         let messages = channel
