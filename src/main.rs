@@ -111,6 +111,10 @@ impl EventHandler for Handler {
                 .await
                 .unwrap();
         }
+
+        // Close the connection
+        ctx.shard.shutdown_clean();
+        std::process::exit(0);
     }
 }
 
