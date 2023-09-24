@@ -56,7 +56,9 @@ impl EventHandler for Handler {
                         .field("Preis Mitarbeiter", format!("{}€", &meal.prices.price_attendant), true)
                         .field("Preis Gast", format!("{}€", &meal.prices.price_guest), true)
                         .field("Kategorie", &meal.category, true)
-                        .footer();
+                        .footer(|footer| footer.text(
+                            format!("{}", &meal.additives.iter().map(|(_k, v)| format!("{}", v)).collect::<Vec<String>>().join(", "))
+                        ));
                         embed
                     });
                 });
