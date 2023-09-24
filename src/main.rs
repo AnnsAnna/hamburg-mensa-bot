@@ -1,15 +1,16 @@
-use serenity::model::Timestamp;
-use std::collections::HashMap;
+
+
 use std::env;
 
+use regex::Regex;
 use serenity::async_trait;
-use serenity::model::channel::Message;
+
 use serenity::model::gateway::Ready;
 use serenity::prelude::*;
 extern crate dotenv;
-use chrono::{DateTime, Utc};
-use serde::Deserialize;
-use tokio::task::spawn_blocking;
+
+
+
 
 mod meals;
 
@@ -29,13 +30,14 @@ impl EventHandler for Handler {
         println!("{} is connected!", ready.user.name);
 
         let channel = ctx.http.get_channel(self.channel_id).await.unwrap().id();
+        let bracket_regex = Regex::new(r"\([^)]*[,]{1}[^)]*\)|\([^)]{1,2}\)").unwrap();
 
         // Clear the channel
         let messages = channel
             .messages(&ctx.http, |retriever| retriever.limit(100))
             .await
             .unwrap();
-        if messages.len() > 0 {
+        if !messages.is_empty() {
             channel.delete_messages(&ctx.http, messages).await.unwrap();
         }
 
@@ -47,52 +49,51 @@ impl EventHandler for Handler {
         } else {
             let meals = self.meals.as_ref().unwrap();
 
-            channel.send_message(&ctx.http, |m| {
-                meals.iter().for_each(|meal| {
-                    m.add_embed(|embed| {
-                        embed.title(&meal.name)
-                        .description(emojify_contents(&meal.contents))
-                        .field("Preis Student", format!("{}€", &meal.prices.price_student), true)
-                        .field("Preis Mitarbeiter", format!("{}€", &meal.prices.price_attendant), true)
-                        .field("Preis Gast", format!("{}€", &meal.prices.price_guest), true)
-                        .field("Kategorie", &meal.category, true)
-                        .footer(|footer| footer.text(
-                            format!("{}", &meal.additives.iter().map(|(_k, v)| format!("{}", v)).collect::<Vec<String>>().join(", "))
-                        ));
-                        embed
+            channel
+                .send_message(&ctx.http, |m| {
+                    meals.iter().for_each(|meal| {
+
+                        // Remove brackets from the meal name including it's content
+                        let result = bracket_regex.replace_all(&meal.name, "");
+
+                        m.add_embed(|embed| {
+                            embed
+                                .title(result)
+                                .description(emojify_contents(&meal.contents))
+                                .field("Kategorie", &meal.category, true)
+                                .field(
+                                    "Preis Student",
+                                    format!("**{}€**", &meal.prices.price_student),
+                                    true,
+                                )
+                                .field(
+                                    "Preis Mitarbeiter",
+                                    format!("{}€", &meal.prices.price_attendant),
+                                    true,
+                                )
+                                // .field("Preis Gast", format!("{}€", &meal.prices.price_guest), true)
+                                .footer(|footer| {
+                                    footer.text(
+                                        &meal
+                                            .additives.values().map(|v| v.to_string())
+                                            .collect::<Vec<String>>()
+                                            .join(", "),
+                                    )
+                                });
+                            if meal.contents.vegan {
+                                embed.color(0x70bf1e);
+                            } else if meal.contents.vegetarian {
+                                embed.color(0xc8d827);
+                            } else {
+                                embed.color(0x592323);
+                            }
+                            embed
+                        });
                     });
-                });
-                // m.add_embed(|embed| {
-                //     embed.title("Allergen")
-                //     .field("Ei", "Ei und Eierzeugnisse", true)
-                //     .field("En", "Erdnüsse und Erdnusserzeugnisse", true)
-                //     .field("Fi", "Fisch und Fischerzeugnisse", true)
-                //     .field("Gl", "glutenhaltiges Getreide und daraus hergestellte Erzeugnisse (z. B. Weizen, Roggen, Gerste etc.)", true)
-                //     .field("Kr", "Krebstiere und Krebstiererzeugnisse", true)
-                //     .field("La", "Milch und Milcherzeugnisse (einschl. Laktose)", true)
-                //     .field("Lu", "Lupine und - erzeugnisse", true)
-                //     .field("Nu", "Schalenfrüchte (z.B. Mandel, Haselnüsse, Walnuss etc.)/-erzeugnisse", true)
-                //     .field("Se", "Sesamsamen und Sesamsamenerzeugnisse", true)
-                //     .field("Sf", "Senf und Senferzeugnisse", true)
-                //     .field("Sl", "Sellerie und Sellerieerzeugnisse", true)
-                //     .field("So", "Soja und Sojaerzeugnisse", true)
-                //     .field("Sw", "Schwefeldioxid und Sulfite (Konzentration über 10mg/kg oder 10mg/l)", true)
-                //     .field("Wt", "Weichtiere (z.B. Muscheln und Weinbergschnecken) und Weichtiererzeugnisse", true)
-                // });
-                // m.add_embed(|embed| {
-                //     embed.title("Zusatzstoffe")
-                //     .field("1", "mit Farbstoff", true)
-                //     .field("2", "mit Konservierungsstoff", true)
-                //     .field("3", "mit Antioxidationsmittel", true)
-                //     .field("4", "mit Geschmacksverstärker", true)
-                //     .field("5", "Geschwefelt", true)
-                //     .field("6", "Geschwärzt", true)
-                //     .field("7", "Gewachst", true)
-                //     .field("8", "mit Phosphat", true)
-                //     .field("9", "mit Süßungsmittel", true)
-                // })
-                m
-            }).await.unwrap();
+                    m
+                })
+                .await
+                .unwrap();
         }
     }
 }
@@ -100,8 +101,11 @@ impl EventHandler for Handler {
 fn emojify_contents(content: &meals::Contents) -> String {
     // Return a string of emojis for the contents of the meal.
     let mut emojis = String::new();
-    if content.alcohol {
-        emojis.push_str("🍷Alkohol ");
+    if content.vegan {
+        emojis.push_str("🌱Vegan ");
+    }
+    if content.vegetarian {
+        emojis.push_str("🥕Vegetarisch ");
     }
     if content.beef {
         emojis.push_str("🐄💀Fleisch ");
@@ -115,9 +119,6 @@ fn emojify_contents(content: &meals::Contents) -> String {
     if content.gelatine {
         emojis.push_str("🐖💀Fleisch ");
     }
-    if !content.lactose_free {
-        emojis.push_str("🥛Laktose ");
-    }
     if content.lamb {
         emojis.push_str("🐑💀Fleisch ");
     }
@@ -127,11 +128,11 @@ fn emojify_contents(content: &meals::Contents) -> String {
     if content.poultry {
         emojis.push_str("🐓💀Fleisch ");
     }
-    if content.vegan {
-        emojis.push_str("🌱Vegan ");
+    if !content.lactose_free {
+        emojis.push_str("🥛Laktose ");
     }
-    if content.vegetarian {
-        emojis.push_str("🥕Vegetarisch ");
+    if content.alcohol {
+        emojis.push_str("🍷Alkohol ");
     }
     emojis
 }
@@ -152,7 +153,7 @@ async fn main() {
 
     let now = chrono::Local::now();
     let request = client
-        .get(format!("{}{}.json", BASE_URL, now.format("%Y/%m/22")))
+        .get(format!("{}{}.json", BASE_URL, now.format("%Y/%m/25")))
         .send()
         .await
         .unwrap();
@@ -169,7 +170,7 @@ async fn main() {
 
     let mut client = Client::builder(&token, intents)
         .event_handler(Handler {
-            meals: meals,
+            meals,
             channel_id: channel_id.parse::<u64>().unwrap(),
         })
         .await

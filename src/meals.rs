@@ -1,9 +1,9 @@
 // Taken directly from https://github.com/HAWHHCalendarBot/mensa-crawler/blob/main/src/meal.rs
 
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
 
-use chrono::NaiveDate;
+
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
