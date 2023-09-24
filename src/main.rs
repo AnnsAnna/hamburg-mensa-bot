@@ -16,6 +16,7 @@ struct Handler {
     meals: Option<Vec<meals::Meal>>,
     channel_id: u64,
     is_in_future: bool,
+    mensa: String,
 }
 
 const BASE_URL: &str =
@@ -61,7 +62,7 @@ impl EventHandler for Handler {
 
                     m.add_embed(|embed| {
                         embed
-                            .title(parsed_date.format_localized("%A, %-d %B in der Mensa gibt es:", chrono::Locale::de_DE))
+                            .title(format!("{} in der {} gibt es:", parsed_date.format_localized("%A, %-d %B", chrono::Locale::de_DE), self.mensa))
                             .footer(|f| f.text("❤️EdJoPaTo für mensa-crawler!\n 🕵️Quellcode: https://github.com/AnnsAnna/hamburg-mensa-bot"))
                             .color(0x00ff00)
                     });
@@ -218,6 +219,7 @@ async fn main() {
             meals,
             channel_id: channel_id.parse::<u64>().unwrap(),
             is_in_future,
+            mensa
         })
         .await
         .expect("Err creating client");
