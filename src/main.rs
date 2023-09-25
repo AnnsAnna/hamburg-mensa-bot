@@ -1,7 +1,7 @@
 use std::env;
 use std::ops::Add;
 
-use chrono::Datelike;
+use chrono::{Datelike, Timelike};
 use meals::Meal;
 use regex::Regex;
 use serenity::async_trait;
@@ -215,6 +215,13 @@ async fn main() {
         true
     } else if now.weekday() == chrono::Weekday::Sun {
         now = now.add(chrono::Duration::days(1));
+        true
+    } else if now.hour() >= 18 {
+        if now.weekday() == chrono::Weekday::Fri {
+            now = now.add(chrono::Duration::days(3));
+        } else {
+            now = now.add(chrono::Duration::days(1));
+        }
         true
     } else {
         false
