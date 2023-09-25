@@ -113,12 +113,12 @@ fn add_meal(meal: &Meal, m: &mut serenity::builder::CreateMessage) {
             .field("Kategorie", &meal.category, true)
             .field(
                 "**Preis Student**",
-                format!("**__{}€__**", &meal.prices.price_student),
+                format!("**__{:.2}€__**", &meal.prices.price_student),
                 true,
             )
             .field(
                 "Preis Mitarbeiter",
-                format!("{}€", &meal.prices.price_attendant),
+                format!("{:.2}€", &meal.prices.price_attendant),
                 true,
             )
             // .field("Preis Gast", format!("{}€", &meal.prices.price_guest), true)
