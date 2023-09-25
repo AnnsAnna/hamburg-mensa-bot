@@ -2,6 +2,7 @@ use std::env;
 use std::ops::Add;
 
 use chrono::Datelike;
+use meals::Meal;
 use regex::Regex;
 use serenity::async_trait;
 
@@ -29,8 +30,6 @@ impl EventHandler for Handler {
         println!("{} is connected!", ready.user.name);
 
         let channel = ctx.http.get_channel(self.channel_id).await.unwrap().id();
-        // This god awful regex should clear it from non-important brackets
-        let bracket_regex = Regex::new(r"\s?(\([^)]*[,]{1}[^)]*\)|\([^)]{1,2}\))").unwrap();
 
         // Clear the channel
         let messages = channel
@@ -49,6 +48,8 @@ impl EventHandler for Handler {
                 .unwrap();
         } else {
             let meals = self.meals.as_ref().unwrap();
+            // Discord has a limit on the amount of embeds per message
+            let mut meal_chunks = meals.chunks(8);
             let parsed_date =
                 chrono::NaiveDate::parse_from_str(&meals[0].date, "%Y-%m-%d").unwrap();
 
@@ -66,56 +67,80 @@ impl EventHandler for Handler {
                             .footer(|f| f.text("❤️EdJoPaTo für mensa-crawler!\n 🕵️Quellcode: https://github.com/AnnsAnna/hamburg-mensa-bot"))
                             .color(0x00ff00)
                     });
-                    meals.iter().for_each(|meal| {
-                        // Remove brackets from the meal name including it's content
-                        let result = bracket_regex.replace_all(&meal.name, "");
-
-                        m.add_embed(|embed| {
-                            embed
-                                .title(result)
-                                .description(emojify_contents(&meal.contents))
-                                .field("Kategorie", &meal.category, true)
-                                .field(
-                                    "**Preis Student**",
-                                    format!("**__{}€__**", &meal.prices.price_student),
-                                    true,
-                                )
-                                .field(
-                                    "Preis Mitarbeiter",
-                                    format!("{}€", &meal.prices.price_attendant),
-                                    true,
-                                )
-                                // .field("Preis Gast", format!("{}€", &meal.prices.price_guest), true)
-                                .footer(|footer| {
-                                    footer.text(
-                                        &meal
-                                            .additives
-                                            .values()
-                                            .map(|v| v.to_string())
-                                            .collect::<Vec<String>>()
-                                            .join(", "),
-                                    )
-                                });
-                            if meal.contents.vegan {
-                                embed.color(0x70bf1e);
-                            } else if meal.contents.vegetarian {
-                                embed.color(0xc8d827);
-                            } else {
-                                embed.color(0x592323);
-                            }
-                            embed
-                        });
-                    });
                     m
                 })
                 .await
                 .unwrap();
+
+            loop {
+                let chunk = meal_chunks.next();
+
+                if chunk.is_none() {
+                    break;
+                }
+
+                let chunk = chunk.unwrap();
+
+                channel
+                    .send_message(&ctx.http, |m| {
+                        chunk.iter().for_each(|meal| {
+                            add_meal(meal, m);
+                        });
+                        m
+                    })
+                    .await
+                    .unwrap();
+            }
         }
 
         // Close the connection
         ctx.shard.shutdown_clean();
         std::process::exit(0);
     }
+}
+
+fn add_meal(meal: &Meal, m: &mut serenity::builder::CreateMessage) {
+    // This god awful regex should clear it from non-important brackets
+    let bracket_regex = Regex::new(r"\s?(\([^)]*[,]{1}[^)]*\)|\([^)]{1,2}\))").unwrap();
+
+    // Remove brackets from the meal name including it's content
+    let result = bracket_regex.replace_all(&meal.name, "");
+
+    m.add_embed(|embed| {
+        embed
+            .title(result)
+            .description(emojify_contents(&meal.contents))
+            .field("Kategorie", &meal.category, true)
+            .field(
+                "**Preis Student**",
+                format!("**__{}€__**", &meal.prices.price_student),
+                true,
+            )
+            .field(
+                "Preis Mitarbeiter",
+                format!("{}€", &meal.prices.price_attendant),
+                true,
+            )
+            // .field("Preis Gast", format!("{}€", &meal.prices.price_guest), true)
+            .footer(|footer| {
+                footer.text(
+                    &meal
+                        .additives
+                        .values()
+                        .map(|v| v.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                )
+            });
+        if meal.contents.vegan {
+            embed.color(0x70bf1e);
+        } else if meal.contents.vegetarian {
+            embed.color(0xc8d827);
+        } else {
+            embed.color(0x592323);
+        }
+        embed
+    });
 }
 
 fn emojify_contents(content: &meals::Contents) -> String {
