@@ -20,9 +20,9 @@ struct Handler {
     mensa: String,
 }
 
-const BASE_URL: &str =
-    "https://raw.githubusercontent.com/HAWHHCalendarBot/mensa-data/main/";
-const USER_AGENT: &str = "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com) - HAW Mensa Bot";
+const BASE_URL: &str = "https://raw.githubusercontent.com/HAWHHCalendarBot/mensa-data/main/";
+const USER_AGENT: &str =
+    "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com) - HAW Mensa Bot";
 
 #[async_trait]
 impl EventHandler for Handler {
@@ -228,7 +228,12 @@ async fn main() {
     };
 
     let request = client
-        .get(format!("{}/{}/{}.json", BASE_URL, mensa, now.format("%Y/%m/%d")))
+        .get(format!(
+            "{}/{}/{}.json",
+            BASE_URL,
+            mensa,
+            now.format("%Y/%m/%d")
+        ))
         .send()
         .await
         .unwrap();
@@ -255,7 +260,7 @@ async fn main() {
             meals,
             channel_id: channel_id.parse::<u64>().unwrap(),
             is_in_future,
-            mensa
+            mensa,
         })
         .await
         .expect("Err creating client");
