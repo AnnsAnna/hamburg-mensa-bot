@@ -65,7 +65,7 @@ impl EventHandler for Handler {
                         embed
                             .title(format!("{} in der {} gibt es:", parsed_date.format_localized("%A, %-d %B", chrono::Locale::de_DE), self.mensa))
                             .footer(|f| f.text("❤️EdJoPaTo für mensa-crawler!\n 🕵️Quellcode: https://github.com/AnnsAnna/hamburg-mensa-bot"))
-                            .color(0x00ff00)
+                            .color(0xf9a2e3)
                     });
                     m
                 })
