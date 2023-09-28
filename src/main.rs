@@ -9,6 +9,10 @@ use serenity::async_trait;
 use serenity::model::gateway::Ready;
 use serenity::prelude::*;
 extern crate dotenv;
+use tokio::{
+    fs::File,
+    io::{AsyncReadExt, AsyncWriteExt},
+};
 
 mod meals;
 
@@ -18,8 +22,10 @@ struct Handler {
     channel_id: u64,
     is_in_future: bool,
     mensa: String,
+    is_identical: bool,
 }
 
+const FUTURE_WARNING: &str = "🚨Achtung: Dieser Plan ist für die Zukunft!";
 const BASE_URL: &str = "https://raw.githubusercontent.com/HAWHHCalendarBot/mensa-data/main/";
 const USER_AGENT: &str =
     "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com) - HAW Mensa Bot";
@@ -31,19 +37,48 @@ impl EventHandler for Handler {
 
         let channel = ctx.http.get_channel(self.channel_id).await.unwrap().id();
 
-        // Clear the channel
         let messages = channel
             .messages(&ctx.http, |retriever| retriever.limit(100))
             .await
             .unwrap();
+
+        if self.is_identical {
+            let message = messages.iter().find(|m| {
+                m.embeds
+                    .iter()
+                    .any(|e| e.title.is_some() && e.title.as_ref().unwrap() == FUTURE_WARNING)
+            });
+            if message.is_some() {
+                channel
+                    .delete_message(&ctx.http, message.unwrap().id)
+                    .await
+                    .unwrap();
+            }
+
+            // Close the connection
+            ctx.shard.shutdown_clean();
+            std::process::exit(0);
+        }
+
+        // Clear the channel
         if !messages.is_empty() {
             channel.delete_messages(&ctx.http, messages).await.unwrap();
+        }
+        if self.is_in_future {
+            channel
+                .send_message(&ctx.http, |m| {
+                    m.add_embed(|embed| embed.color(0xff0000).title(FUTURE_WARNING))
+                })
+                .await
+                .unwrap();
         }
 
         if self.meals.is_none() {
             // This shouldn't happen in reality unless there is no plan whatsoever, but just in case
             channel
-                .send_message(&ctx.http, |m| m.content("Can't find any meals :("))
+                .send_message(&ctx.http, |m| {
+                    m.content("Can't find any meals - Something went wrong :(")
+                })
                 .await
                 .unwrap();
         } else {
@@ -55,12 +90,6 @@ impl EventHandler for Handler {
 
             channel
                 .send_message(&ctx.http, |m| {
-                    if self.is_in_future {
-                        m.add_embed(|embed| {
-                          embed.color(0xff0000).title("🚨Achtung: Dieser Plan ist für die Zukunft!")
-                        });
-                    }
-
                     m.add_embed(|embed| {
                         embed
                             .title(format!("{} in der {} gibt es:", parsed_date.format_localized("%A, %-d %B", chrono::Locale::de_DE), self.mensa))
@@ -208,6 +237,7 @@ async fn main() {
         .unwrap();
 
     let mut now = chrono::Local::now();
+    let mut is_identical = false;
 
     // Change now to Monday if it's Saturday or Sunday
     let is_in_future = if now.weekday() == chrono::Weekday::Sat {
@@ -244,6 +274,28 @@ async fn main() {
         None
     } else {
         let mut parsed = request.json::<Vec<meals::Meal>>().await.unwrap();
+
+        // Save to file
+        let file = File::open(format!("{}.json", mensa)).await;
+
+        is_identical = if file.is_err() {
+            false
+        } else {
+            let mut file = file.unwrap();
+            let mut old_meals = String::new();
+            file.read_to_string(&mut old_meals).await.unwrap();
+            let old_meals: Vec<meals::Meal> = serde_json::from_str(&old_meals).unwrap();
+
+            old_meals == parsed
+        };
+
+        if !is_identical {
+            let mut file = File::create(format!("{}.json", mensa)).await.unwrap();
+            file.write_all(serde_json::to_string_pretty(&parsed).unwrap().as_bytes())
+                .await
+                .unwrap();
+        }
+
         // Sort by content with vegan as highest priority
         parsed.sort_by(|a, b| {
             let a = meal_weight(&a.contents);
@@ -261,6 +313,7 @@ async fn main() {
             channel_id: channel_id.parse::<u64>().unwrap(),
             is_in_future,
             mensa,
+            is_identical,
         })
         .await
         .expect("Err creating client");
