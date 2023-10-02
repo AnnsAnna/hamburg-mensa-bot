@@ -77,7 +77,12 @@ impl EventHandler for Handler {
             // This shouldn't happen in reality unless there is no plan whatsoever, but just in case
             channel
                 .send_message(&ctx.http, |m| {
-                    m.content("Can't find any meals - Something went wrong :(")
+                    m.embed(|e| {
+                        e.title("Es gibt keinen Plan für diese Mensa!")
+                            .description("Informiere dich unter: https://www.stwhh.de/speiseplan")
+                            .footer(|f| f.text("Wenn du denkst, dass dies ein Fehler ist, melde dich unter https://github.com/AnnsAnna/hamburg-mensa-bot/issues/new"))
+                            .color(0xff0000)
+                    })
                 })
                 .await
                 .unwrap();
