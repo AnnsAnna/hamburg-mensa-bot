@@ -79,7 +79,12 @@ impl EventHandler for Handler {
                 .send_message(&ctx.http, |m| {
                     m.embed(|e| {
                         e.title("Es gibt keinen Plan für diese Mensa!")
-                            .description("Informiere dich unter: https://www.stwhh.de/speiseplan")
+                            .description("
+                                Dies kann mehrere Gründe haben z.B. \
+                                könnte die Mensa auf Grund von Feiertagen oder Sonderveranstaltungen geschlossen sein. \
+                                Es kann aber auch sein, dass es eine IT Störung gibt und der Plan nicht geladen werden kann oder \
+                                dass der Bot nicht richtig funktioniert.
+                                **Informiere dich unter: https://www.stwhh.de/speiseplan**")
                             .footer(|f| f.text("Wenn du denkst, dass dies ein Fehler ist, melde dich unter https://github.com/AnnsAnna/hamburg-mensa-bot/issues/new"))
                             .color(0xff0000)
                     })
