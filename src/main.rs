@@ -26,6 +26,7 @@ struct Handler {
 }
 
 const FUTURE_WARNING: &str = "🚨Achtung: Dieser Plan ist für die Zukunft!";
+const NO_PLAN_MESSAGE: &str = "🚨 Es gibt keinen Plan für die Mensa!";
 const BASE_URL: &str = "https://raw.githubusercontent.com/HAWHHCalendarBot/mensa-data/main/";
 const USER_AGENT: &str =
     "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com) - HAW Mensa Bot";
@@ -58,6 +59,17 @@ impl EventHandler for Handler {
             // Close the connection
             ctx.shard.shutdown_clean();
             std::process::exit(0);
+        } else if self.meals.is_none() {
+            let message = messages.iter().find(|m| {
+                m.embeds
+                    .iter()
+                    .any(|e| e.title.is_some() && e.title.as_ref().unwrap() == NO_PLAN_MESSAGE)
+            });
+            if message.is_some() {
+                // Close the connection
+                ctx.shard.shutdown_clean();
+                std::process::exit(0);
+            }
         }
 
         // Clear the channel
@@ -74,11 +86,10 @@ impl EventHandler for Handler {
         }
 
         if self.meals.is_none() {
-            // This shouldn't happen in reality unless there is no plan whatsoever, but just in case
             channel
                 .send_message(&ctx.http, |m| {
                     m.embed(|e| {
-                        e.title("Es gibt keinen Plan für diese Mensa!")
+                        e.title(NO_PLAN_MESSAGE)
                             .description("
                                 Dies kann mehrere Gründe haben z.B. \
                                 könnte die Mensa auf Grund von Feiertagen oder Sonderveranstaltungen geschlossen sein. \
