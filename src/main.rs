@@ -96,7 +96,7 @@ impl EventHandler for Handler {
                                 Es kann aber auch sein, dass es eine IT Störung gibt und der Plan nicht geladen werden kann oder \
                                 dass der Bot nicht richtig funktioniert.
                                 **Informiere dich unter: https://www.stwhh.de/speiseplan**")
-                            .footer(|f| f.text("Wenn du denkst, dass dies ein Fehler ist, melde dich unter https://github.com/AnnsAnna/hamburg-mensa-bot/issues/new"))
+                            .footer(|f| f.text("Wenn du denkst, dass dies ein Fehler ist, melde dich unter https://github.com/AnnsAnns/hamburg-mensa-bot/issues/new"))
                             .color(0xff0000)
                     })
                 })
@@ -114,7 +114,7 @@ impl EventHandler for Handler {
                     m.add_embed(|embed| {
                         embed
                             .title(format!("{} in der {} gibt es:", parsed_date.format_localized("%A, %-d %B", chrono::Locale::de_DE), self.mensa))
-                            .footer(|f| f.text("❤️EdJoPaTo für mensa-crawler!\n 🕵️Quellcode: https://github.com/AnnsAnna/hamburg-mensa-bot"))
+                            .footer(|f| f.text("❤️EdJoPaTo für mensa-crawler!\n 🕵️Quellcode: https://github.com/AnnsAnns/hamburg-mensa-bot"))
                             .color(0xf9a2e3)
                     });
                     m
