@@ -2,9 +2,7 @@
 
 This bot is intended to be run through a daily cronjob. It will post the menu of the day to a discord channel.
 
-## Here be Dragons 🐲
-
-This was a side-side-side project of mine. If you want to use it, you are free to do so. If you want to improve it, feel free to open a pull request.
+![Discord_1KweG8GUKD](https://github.com/AnnsAnns/hamburg-mensa-bot/assets/25822956/7aa864a5-e97f-418f-9689-88784f116546)
 
 ## Setup 🛠️
 
