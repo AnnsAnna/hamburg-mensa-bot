@@ -74,7 +74,10 @@ impl EventHandler for Handler {
 
         // Clear the channel
         if !messages.is_empty() {
-            channel.delete_messages(&ctx.http, messages).await.unwrap();
+            match channel.delete_messages(&ctx.http, messages).await {
+                Ok(_) => println!("Deleted messages"),
+                Err(e) => println!("Error deleting messages - Presumably too old: {:?}", e),
+            }
         }
         if self.is_in_future {
             channel
@@ -278,18 +281,17 @@ async fn main() {
         false
     };
 
+    let request_url = format!("{}{}/{}.json", BASE_URL, mensa, now.format("%Y/%m/%d"));
+
+    println!("Requesting: {}", request_url);
+
     let request = client
-        .get(format!(
-            "{}/{}/{}.json",
-            BASE_URL,
-            mensa,
-            now.format("%Y/%m/%d")
-        ))
+        .get(&request_url)
         .send()
         .await
         .unwrap();
 
-    println!("Status: {}", request.status());
+    println!("Status: {} @ {}", request.status(), request.url());
 
     let meals = if request.status() == 404 {
         None
